@@ -4,7 +4,7 @@ import * as fs from 'fs'
 
 // See docs to create JS action: https://docs.github.com/en/actions/creating-actions/creating-a-javascript-action
 
-try {
+function main() {
   const sparkVersion = core.getInput('spark-version');
   var sparkUrl = core.getInput('spark-url');
   const hadoopVersion = core.getInput('hadoop-version');
@@ -73,6 +73,10 @@ try {
   core.addPath(`${sparkHome}/bin`);
 
   core.setOutput("spark-version", sparkVersion);
+}
+
+try {
+  main()
 } catch (error) {
   console.log(`\n${new Date().toLocaleTimeString('fr-FR')} - Issue installing Spark: check if the Spark version and Hadoop versions you are using is part of the one proposed in the Spark download page at https://spark.apache.org/downloads.html`)
   console.log(error);
