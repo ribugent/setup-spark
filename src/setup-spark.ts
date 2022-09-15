@@ -37,7 +37,7 @@ async function main() {
   const sparkExtractedFolder = await toolCache.extractTar(sparkTarPath, installFolder);
   const cachedPath = await toolCache.cacheDir(sparkExtractedFolder, 'spark', `${sparkVersion}-bin-hadoop${hadoopVersion}${scalaBit}`);
   core.addPath(cachedPath);
-  fs.symlinkSync("${installFolder}/spark-${sparkVersion}-bin-hadoop${hadoopVersion}${scalaBit}", `${installFolder}/spark`)
+  fs.symlinkSync(sparkExtractedFolder, `${installFolder}/spark`)
 
   if (!fs.existsSync(`${installFolder}/spark/bin/spark-submit`)) {
     throw new Error(`The Spark binary was not properly downloaded from ${sparkUrl}`);
