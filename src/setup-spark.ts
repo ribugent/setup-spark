@@ -1,10 +1,11 @@
 import * as core from '@actions/core';
+import * as toolCache from '@actions/tool-cache';
 import { execSync } from 'child_process';
 import * as fs from 'fs'
 
 // See docs to create JS action: https://docs.github.com/en/actions/creating-actions/creating-a-javascript-action
 
-function main() {
+async function main() {
   const sparkVersion = core.getInput('spark-version');
   var sparkUrl = core.getInput('spark-url');
   const hadoopVersion = core.getInput('hadoop-version');
@@ -30,24 +31,13 @@ function main() {
   if (!sparkUrl) {
     sparkUrl = `https://archive.apache.org/dist/spark/spark-${sparkVersion}/spark-${sparkVersion}-bin-hadoop${hadoopVersion}${scalaBit}.tgz`
   }
-  
-  // curl -fsSL -o spark.tgz ${sparkUrl} &&
-  var command = `cd /tmp &&
-  wget -q -O spark.tgz ${sparkUrl} &&
-  tar xzf spark.tgz -C ${installFolder} &&
-  rm "spark.tgz" &&
-  ln -s "${installFolder}/spark-${sparkVersion}-bin-hadoop${hadoopVersion}${scalaBit}" ${installFolder}/spark`
-  // TODO: improve the symlink generation
 
   console.log(`${new Date().toLocaleTimeString('fr-FR')} - Downloading the binary from ${sparkUrl}`);
-
-  try {
-    execSync(command);
-  } catch (error) {
-    console.log(`${new Date().toLocaleTimeString('fr-FR')} - Error running the command to download the Spark binary`);
-    // @ts-ignore
-    throw new Error(error.message);
-  }
+  const sparkTarPath = await toolCache.downloadTool(sparkUrl);
+  const sparkExtractedFolder = await toolCache.extractTar(sparkTarPath, installFolder);
+  const cachedPath = await toolCache.cacheDir(sparkExtractedFolder, 'spark', `${sparkVersion}-bin-hadoop${hadoopVersion}${scalaBit}`);
+  core.addPath(cachedPath);
+  fs.symlinkSync("${installFolder}/spark-${sparkVersion}-bin-hadoop${hadoopVersion}${scalaBit}", `${installFolder}/spark`)
 
   if (!fs.existsSync(`${installFolder}/spark/bin/spark-submit`)) {
     throw new Error(`The Spark binary was not properly downloaded from ${sparkUrl}`);
@@ -75,11 +65,9 @@ function main() {
   core.setOutput("spark-version", sparkVersion);
 }
 
-try {
-  main()
-} catch (error) {
+main().catch(error => {
   console.log(`\n${new Date().toLocaleTimeString('fr-FR')} - Issue installing Spark: check if the Spark version and Hadoop versions you are using is part of the one proposed in the Spark download page at https://spark.apache.org/downloads.html`)
   console.log(error);
   // @ts-ignore
   core.setFailed(error.message);
-}
+})
